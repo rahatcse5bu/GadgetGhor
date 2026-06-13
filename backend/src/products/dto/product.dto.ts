@@ -50,6 +50,10 @@ export class CreateProductDto {
   images?: string[];
 
   @IsOptional()
+  @IsString()
+  video?: string;
+
+  @IsOptional()
   @IsNumber()
   @Min(0)
   stock?: number;

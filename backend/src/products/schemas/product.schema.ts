@@ -46,6 +46,10 @@ export class Product {
   @Prop({ type: [String], default: [] })
   images: string[];
 
+  // Optional product video: a YouTube/Vimeo link or a direct/Cloudinary video URL.
+  @Prop({ default: '' })
+  video: string;
+
   @Prop({ default: 0, min: 0 })
   stock: number;
 

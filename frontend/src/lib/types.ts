@@ -13,6 +13,7 @@ export interface Product {
   price: number;
   compareAtPrice: number;
   images: string[];
+  video?: string;
   stock: number;
   sku: string;
   specs: Spec[];

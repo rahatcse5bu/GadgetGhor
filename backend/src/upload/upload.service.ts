@@ -26,6 +26,25 @@ export class UploadService {
     });
   }
 
+  uploadVideo(file: Express.Multer.File): Promise<{ url: string; publicId: string }> {
+    if (!file) throw new BadRequestException('No file provided');
+    if (!process.env.CLOUDINARY_CLOUD_NAME) {
+      throw new BadRequestException(
+        'Cloudinary is not configured. Set CLOUDINARY_* env vars.',
+      );
+    }
+    return new Promise((resolve, reject) => {
+      const stream = this.cloudinary.uploader.upload_stream(
+        { folder: 'gadgetghor/videos', resource_type: 'video' },
+        (error, result) => {
+          if (error) return reject(new BadRequestException(error.message));
+          resolve({ url: result.secure_url, publicId: result.public_id });
+        },
+      );
+      streamifier.createReadStream(file.buffer).pipe(stream);
+    });
+  }
+
   async deleteImage(publicId: string) {
     await this.cloudinary.uploader.destroy(publicId);
     return { deleted: true };

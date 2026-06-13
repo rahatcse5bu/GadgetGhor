@@ -1,7 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Trash2, Save } from 'lucide-react';
+import { useRef } from 'react';
+import { Loader2, Plus, Trash2, Save, Video, Upload, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, apiError } from '@/lib/api';
 import { Category } from '@/lib/types';
@@ -15,6 +16,7 @@ const empty = {
   name: '', description: '', brand: '', category: '',
   price: '', compareAtPrice: '', cost: '', stock: '', sku: '',
   images: [] as string[],
+  video: '' as string,
   specs: [] as { key: string; value: string }[],
   tags: '' as string,
   featured: false, isActive: true,
@@ -26,8 +28,29 @@ export default function ProductForm({ productId }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(!!productId);
   const [saving, setSaving] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleVideoFile = async (file?: File | null) => {
+    if (!file) return;
+    setVideoUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const { data } = await api.post('/upload/video', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      set('video', data.url);
+      toast.success('Video uploaded');
+    } catch (err) {
+      toast.error(apiError(err, 'Video upload failed — check Cloudinary config'));
+    } finally {
+      setVideoUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
+  };
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data)).catch(() => {});
@@ -42,7 +65,7 @@ export default function ProductForm({ productId }: Props) {
         category: p.category || '', price: String(p.price ?? ''),
         compareAtPrice: String(p.compareAtPrice ?? ''), cost: String(p.cost ?? ''),
         stock: String(p.stock ?? ''), sku: p.sku || '',
-        images: p.images || [], specs: p.specs || [],
+        images: p.images || [], video: p.video || '', specs: p.specs || [],
         tags: (p.tags || []).join(', '), featured: !!p.featured, isActive: p.isActive !== false,
       });
     }).catch(() => toast.error('Could not load product')).finally(() => setLoading(false));
@@ -68,6 +91,7 @@ export default function ProductForm({ productId }: Props) {
       stock: Number(form.stock) || 0,
       sku: form.sku,
       images: form.images,
+      video: form.video.trim(),
       specs: form.specs.filter((s) => s.key),
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       featured: form.featured,
@@ -123,6 +147,54 @@ export default function ProductForm({ productId }: Props) {
         <div className="card p-5">
           <h2 className="mb-4 font-semibold text-slate-800">Images</h2>
           <ImageUploader images={form.images} onChange={(urls) => set('images', urls)} />
+        </div>
+
+        <div className="card p-5">
+          <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800">
+            <Video size={18} className="text-brand-500" /> Product video
+          </h2>
+          <div className="flex gap-2">
+            <input
+              className="input flex-1"
+              placeholder="Paste a YouTube / Vimeo link or video URL"
+              value={form.video}
+              onChange={(e) => set('video', e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => videoInputRef.current?.click()}
+              disabled={videoUploading}
+              className="btn-outline whitespace-nowrap px-4"
+            >
+              {videoUploading ? <Loader2 className="animate-spin" size={16} /> : <><Upload size={16} /> Upload</>}
+            </button>
+            {form.video && (
+              <button
+                type="button"
+                onClick={() => set('video', '')}
+                className="grid w-10 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500"
+                aria-label="Remove video"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+          <input
+            ref={videoInputRef}
+            type="file"
+            accept="video/*"
+            hidden
+            onChange={(e) => handleVideoFile(e.target.files?.[0])}
+          />
+          {form.video && (
+            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-black">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <video src={form.video} controls className="max-h-56 w-full" preload="metadata" />
+            </div>
+          )}
+          <p className="mt-1.5 text-xs text-slate-400">
+            Paste a YouTube/Vimeo link, or upload a file to Cloudinary (max 100 MB). The preview shows uploaded/direct video files; links play on the product page.
+          </p>
         </div>
 
         <div className="card p-5">

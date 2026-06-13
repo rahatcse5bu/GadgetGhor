@@ -19,6 +19,7 @@ import { formatBDT, discountPercent } from '@/lib/format';
 import { useCart } from '@/store/cart';
 import Stars from '@/components/Stars';
 import ProductCard from '@/components/ProductCard';
+import ProductVideo from '@/components/ProductVideo';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -205,6 +206,12 @@ export default function ProductPage() {
           )}
         </div>
       </div>
+
+      {product.video && (
+        <div className="mx-auto max-w-3xl">
+          <ProductVideo url={product.video} poster={product.images?.[0]} />
+        </div>
+      )}
 
       {related.length > 0 && (
         <section className="mt-14">

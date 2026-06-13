@@ -10,19 +10,26 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const allowed = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',');
+  const allowed = (process.env.FRONTEND_URL || 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
   app.enableCors({
     origin: (origin, cb) => {
-      // allow non-browser tools (no origin), explicit allowlist,
-      // and any localhost/127.0.0.1 port during development
+      // Allow: non-browser tools (no origin), the explicit FRONTEND_URL
+      // allowlist, any localhost port in dev, and any *.vercel.app deployment
+      // (covers production + preview URLs).
       if (
         !origin ||
         allowed.includes(origin) ||
-        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
+        /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ||
+        /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)
       ) {
         return cb(null, true);
       }
-      return cb(new Error(`Origin ${origin} not allowed by CORS`), false);
+      // Reject without throwing: the browser blocks it (no ACAO header),
+      // but we avoid turning it into a 500 Internal Server Error.
+      return cb(null, false);
     },
     credentials: true,
   });
@@ -36,8 +43,9 @@ async function bootstrap() {
   );
 
   const port = process.env.PORT || 4000;
-  await app.listen(port);
+  // Bind to 0.0.0.0 so hosting platforms (Render, etc.) can detect the open port.
+  await app.listen(port, '0.0.0.0');
   // eslint-disable-next-line no-console
-  console.log(`🚀 GadgetGhor API running on http://localhost:${port}/api`);
+  console.log(`🚀 GadgetGhor API running on port ${port}`);
 }
 bootstrap();

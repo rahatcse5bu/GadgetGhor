@@ -19,7 +19,8 @@ import { formatBDT, discountPercent } from '@/lib/format';
 import { useCart } from '@/store/cart';
 import Stars from '@/components/Stars';
 import ProductCard from '@/components/ProductCard';
-import ProductVideo from '@/components/ProductVideo';
+import { resolveVideo } from '@/components/ProductVideo';
+import { Play } from 'lucide-react';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -28,7 +29,7 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState<Product | null>(null);
   const [related, setRelated] = useState<Product[]>([]);
-  const [activeImg, setActiveImg] = useState(0);
+  const [active, setActive] = useState(0);
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +39,9 @@ export default function ProductPage() {
       .get<Product>(`/products/slug/${slug}`)
       .then((r) => {
         setProduct(r.data);
-        setActiveImg(0);
+        // default the main viewer to the first image (video sits first in the
+        // thumbnail strip but we don't auto-open it)
+        setActive(r.data.video ? 1 : 0);
         setQty(1);
         return api.get('/products', {
           params: { category: r.data.category, limit: 5 },
@@ -101,33 +104,80 @@ export default function ProductPage() {
       <div className="grid gap-8 lg:grid-cols-2">
         {/* gallery */}
         <div>
-          <div className="card relative aspect-square overflow-hidden">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={product.images?.[activeImg] || '/placeholder.svg'}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-            {off > 0 && (
-              <span className="badge absolute left-3 top-3 bg-accent-500 text-white">-{off}%</span>
-            )}
-          </div>
-          {product.images?.length > 1 && (
-            <div className="mt-3 flex gap-2">
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setActiveImg(i)}
-                  className={`h-16 w-16 overflow-hidden rounded-lg border-2 ${
-                    i === activeImg ? 'border-brand-500' : 'border-transparent'
-                  }`}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt="" className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
+          {(() => {
+            // Unified media list: video first (if any), then images.
+            const media = [
+              ...(product.video
+                ? [{ kind: 'video' as const, src: product.video, thumb: product.images?.[0] || '' }]
+                : []),
+              ...(product.images || []).map((img) => ({ kind: 'image' as const, src: img, thumb: img })),
+            ];
+            const current = media[active] || media[0];
+            const vid = current?.kind === 'video' ? resolveVideo(current.src) : null;
+
+            return (
+              <>
+                <div className="card relative aspect-square overflow-hidden bg-black">
+                  {current?.kind === 'video' && vid ? (
+                    vid.type === 'file' ? (
+                      <video
+                        src={vid.src}
+                        poster={product.images?.[0]}
+                        controls
+                        autoPlay
+                        playsInline
+                        className="h-full w-full bg-black object-contain"
+                      />
+                    ) : (
+                      <iframe
+                        src={vid.src + (vid.src.includes('?') ? '&' : '?') + 'autoplay=1'}
+                        title="Product video"
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    )
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={current?.src || '/placeholder.svg'}
+                      alt={product.name}
+                      className="h-full w-full bg-white object-cover"
+                    />
+                  )}
+                  {off > 0 && (
+                    <span className="badge absolute left-3 top-3 z-10 bg-accent-500 text-white">-{off}%</span>
+                  )}
+                </div>
+
+                {media.length > 1 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {media.map((m, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setActive(i)}
+                        className={`relative h-16 w-16 overflow-hidden rounded-lg border-2 ${
+                          i === active ? 'border-brand-500' : 'border-transparent'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={m.thumb || '/placeholder.svg'}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                        {m.kind === 'video' && (
+                          <span className="absolute inset-0 grid place-items-center bg-black/35">
+                            <Play size={20} className="fill-white text-white" />
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* info */}
@@ -206,12 +256,6 @@ export default function ProductPage() {
           )}
         </div>
       </div>
-
-      {product.video && (
-        <div className="mx-auto max-w-3xl">
-          <ProductVideo url={product.video} poster={product.images?.[0]} />
-        </div>
-      )}
 
       {related.length > 0 && (
         <section className="mt-14">

@@ -28,6 +28,10 @@ class OrderItem {
   @Prop() slug: string;
   @Prop() image: string;
 
+  // Selected variant label (e.g. "Black"), empty when the product has no variants.
+  @Prop({ default: '' })
+  variant: string;
+
   @Prop({ required: true, min: 0 })
   price: number;
 

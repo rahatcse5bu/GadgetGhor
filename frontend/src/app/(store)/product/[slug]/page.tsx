@@ -32,6 +32,7 @@ export default function ProductPage() {
   const [active, setActive] = useState(0);
   const [qty, setQty] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [variantLabel, setVariantLabel] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -39,10 +40,14 @@ export default function ProductPage() {
       .get<Product>(`/products/slug/${slug}`)
       .then((r) => {
         setProduct(r.data);
-        // default the main viewer to the first image (video sits first in the
-        // thumbnail strip but we don't auto-open it)
-        setActive(r.data.video ? 1 : 0);
         setQty(1);
+        // default to the first in-stock variant (or the first variant)
+        if (r.data.hasVariants && r.data.variants?.length) {
+          const firstInStock = r.data.variants.find((v) => (v.stock ?? 0) > 0);
+          setVariantLabel((firstInStock || r.data.variants[0]).label);
+        } else {
+          setVariantLabel('');
+        }
         return api.get('/products', {
           params: { category: r.data.category, limit: 5 },
         });
@@ -53,6 +58,18 @@ export default function ProductPage() {
       .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [slug]);
+
+  // Reset the gallery's active media whenever the product or selected variant
+  // changes — show the first image (video, if any, sits first in the strip).
+  useEffect(() => {
+    if (!product) return;
+    const v =
+      product.hasVariants && product.variants
+        ? product.variants.find((x) => x.label === variantLabel)
+        : undefined;
+    const dVideo = v?.video || product.video;
+    setActive(dVideo ? 1 : 0);
+  }, [product, variantLabel]);
 
   if (loading)
     return (
@@ -69,24 +86,51 @@ export default function ProductPage() {
       </div>
     );
 
-  const off = discountPercent(product.price, product.compareAtPrice);
-  const out = product.stock <= 0;
+  const hasVariants = !!product.hasVariants && (product.variants?.length || 0) > 0;
+  const selectedVariant = hasVariants
+    ? product.variants!.find((v) => v.label === variantLabel)
+    : undefined;
+
+  // Effective price / stock / media take the selected variant into account.
+  const effPrice = selectedVariant?.price ? selectedVariant.price : product.price;
+  const effStock = hasVariants ? selectedVariant?.stock ?? 0 : product.stock;
+  // Variant media overrides the product's when the variant provides any.
+  const displayImages =
+    selectedVariant?.images?.length
+      ? selectedVariant.images
+      : selectedVariant?.image
+        ? [selectedVariant.image]
+        : product.images || [];
+  const displayVideo = selectedVariant?.video || product.video || '';
+  const effImage = displayImages[0] || '';
+
+  const off = discountPercent(effPrice, product.compareAtPrice);
+  const out = effStock <= 0;
 
   const cartLine = {
     kind: 'product' as const,
     id: product._id,
     slug: product.slug,
     name: product.name,
-    image: product.images?.[0] || '',
-    price: product.price,
-    maxStock: product.stock,
+    image: effImage,
+    price: effPrice,
+    maxStock: effStock,
+    variant: selectedVariant?.label || '',
   };
 
   const addToCart = () => {
+    if (hasVariants && !selectedVariant) {
+      toast.error(`Please choose a ${product.variantLabel || 'variant'}`);
+      return;
+    }
     add(cartLine, qty);
     toast.success('Added to cart');
   };
   const buyNow = () => {
+    if (hasVariants && !selectedVariant) {
+      toast.error(`Please choose a ${product.variantLabel || 'variant'}`);
+      return;
+    }
     add(cartLine, qty);
     router.push('/checkout');
   };
@@ -106,11 +150,12 @@ export default function ProductPage() {
         <div>
           {(() => {
             // Unified media list: video first (if any), then images.
+            // Uses the selected variant's media when it provides any.
             const media = [
-              ...(product.video
-                ? [{ kind: 'video' as const, src: product.video, thumb: product.images?.[0] || '' }]
+              ...(displayVideo
+                ? [{ kind: 'video' as const, src: displayVideo, thumb: displayImages[0] || '' }]
                 : []),
-              ...(product.images || []).map((img) => ({ kind: 'image' as const, src: img, thumb: img })),
+              ...displayImages.map((img) => ({ kind: 'image' as const, src: img, thumb: img })),
             ];
             const current = media[active] || media[0];
             const vid = current?.kind === 'video' ? resolveVideo(current.src) : null;
@@ -189,7 +234,7 @@ export default function ProductPage() {
           </div>
 
           <div className="mt-4 flex items-end gap-3">
-            <span className="text-3xl font-bold text-slate-900">{formatBDT(product.price)}</span>
+            <span className="text-3xl font-bold text-slate-900">{formatBDT(effPrice)}</span>
             {off > 0 && (
               <>
                 <span className="text-lg text-slate-400 line-through">{formatBDT(product.compareAtPrice)}</span>
@@ -198,11 +243,45 @@ export default function ProductPage() {
             )}
           </div>
 
-          <p className="mt-2 text-sm">
+          {/* variant selector */}
+          {hasVariants && (
+            <div className="mt-5">
+              <p className="mb-2 text-sm font-medium text-slate-700">
+                {product.variantLabel || 'Variant'}:{' '}
+                <span className="text-slate-500">{selectedVariant?.label || 'Select an option'}</span>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {product.variants!.map((v) => {
+                  const vOut = (v.stock ?? 0) <= 0;
+                  const selected = v.label === variantLabel;
+                  return (
+                    <button
+                      key={v.label}
+                      onClick={() => setVariantLabel(v.label)}
+                      disabled={vOut}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                        selected
+                          ? 'border-brand-500 bg-brand-50 font-medium text-brand-700'
+                          : 'border-slate-300 text-slate-700 hover:border-brand-400'
+                      } ${vOut ? 'cursor-not-allowed text-slate-400 line-through opacity-60' : ''}`}
+                    >
+                      {(v.images?.[0] || v.image) && (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={v.images?.[0] || v.image} alt="" className="h-6 w-6 rounded object-cover" />
+                      )}
+                      {v.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <p className="mt-3 text-sm">
             {out ? (
               <span className="font-medium text-red-600">Out of stock</span>
-            ) : product.stock <= 5 ? (
-              <span className="font-medium text-amber-600">Only {product.stock} left — order soon!</span>
+            ) : effStock <= 5 ? (
+              <span className="font-medium text-amber-600">Only {effStock} left — order soon!</span>
             ) : (
               <span className="flex items-center gap-1 font-medium text-green-600">
                 <Check size={15} /> In stock
@@ -219,7 +298,7 @@ export default function ProductPage() {
                 <Minus size={16} />
               </button>
               <span className="w-10 text-center font-medium">{qty}</span>
-              <button onClick={() => setQty((q) => Math.min(product.stock, q + 1))} className="grid h-11 w-11 place-items-center text-slate-600 hover:bg-slate-50">
+              <button onClick={() => setQty((q) => Math.min(effStock, q + 1))} className="grid h-11 w-11 place-items-center text-slate-600 hover:bg-slate-50">
                 <Plus size={16} />
               </button>
             </div>

@@ -67,6 +67,26 @@ export class CreateProductDto {
   specs?: { key: string; value: string }[];
 
   @IsOptional()
+  @IsBoolean()
+  hasVariants?: boolean;
+
+  @IsOptional()
+  @IsString()
+  variantLabel?: string;
+
+  @IsOptional()
+  @IsArray()
+  variants?: {
+    label: string;
+    price?: number;
+    stock?: number;
+    sku?: string;
+    images?: string[];
+    video?: string;
+    image?: string;
+  }[];
+
+  @IsOptional()
   @IsArray()
   tags?: string[];
 

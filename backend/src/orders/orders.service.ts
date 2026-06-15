@@ -64,18 +64,38 @@ export class OrdersService {
         const product: any = await this.products.findOne(item.id);
         if (!product.isActive)
           throw new BadRequestException(`"${product.name}" is unavailable`);
-        if (product.stock < item.quantity)
+
+        let price = product.price;
+        let image = product.images?.[0] || '';
+        let variantLabel = '';
+
+        if (product.hasVariants && product.variants?.length) {
+          const variant = product.variants.find((v) => v.label === item.variant);
+          if (!variant)
+            throw new BadRequestException(
+              `Please choose a ${product.variantLabel || 'variant'} for "${product.name}"`,
+            );
+          if (variant.stock < item.quantity)
+            throw new BadRequestException(
+              `Only ${variant.stock} left of "${product.name}" (${variant.label})`,
+            );
+          price = variant.price > 0 ? variant.price : product.price;
+          image = variant.images?.[0] || variant.image || image;
+          variantLabel = variant.label;
+        } else if (product.stock < item.quantity) {
           throw new BadRequestException(
             `Only ${product.stock} left of "${product.name}"`,
           );
-        const price = product.price;
+        }
+
         subtotal += price * item.quantity;
         resolvedItems.push({
           kind: 'product',
           refId: product._id,
           name: product.name,
           slug: product.slug,
-          image: product.images?.[0] || '',
+          image,
+          variant: variantLabel,
           price,
           quantity: item.quantity,
         });
@@ -88,10 +108,18 @@ export class OrdersService {
     );
     const total = subtotal + shippingFee;
 
-    // Reduce stock for products
+    // Reduce stock for products (variant-level when a variant was chosen)
     for (const it of resolvedItems) {
       if (it.kind === 'product') {
-        await this.products.decrementStock(it.refId.toString(), it.quantity);
+        if (it.variant) {
+          await this.products.decrementVariantStock(
+            it.refId.toString(),
+            it.variant,
+            it.quantity,
+          );
+        } else {
+          await this.products.decrementStock(it.refId.toString(), it.quantity);
+        }
       }
     }
 

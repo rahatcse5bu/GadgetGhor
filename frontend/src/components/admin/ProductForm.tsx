@@ -1,12 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRef } from 'react';
-import { Loader2, Plus, Trash2, Save, Video, Upload, X } from 'lucide-react';
+import { Loader2, Plus, Trash2, Save, Video } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { api, apiError } from '@/lib/api';
 import { Category } from '@/lib/types';
 import ImageUploader from './ImageUploader';
+import VideoUploader from './VideoUploader';
 
 interface Props {
   productId?: string; // edit mode if present
@@ -18,6 +18,9 @@ const empty = {
   images: [] as string[],
   video: '' as string,
   specs: [] as { key: string; value: string }[],
+  hasVariants: false,
+  variantLabel: 'Colour',
+  variants: [] as { label: string; price: string; stock: string; sku: string; images: string[]; video: string }[],
   tags: '' as string,
   featured: false, isActive: true,
 };
@@ -28,29 +31,8 @@ export default function ProductForm({ productId }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(!!productId);
   const [saving, setSaving] = useState(false);
-  const [videoUploading, setVideoUploading] = useState(false);
-  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const set = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
-
-  const handleVideoFile = async (file?: File | null) => {
-    if (!file) return;
-    setVideoUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      const { data } = await api.post('/upload/video', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      set('video', data.url);
-      toast.success('Video uploaded');
-    } catch (err) {
-      toast.error(apiError(err, 'Video upload failed — check Cloudinary config'));
-    } finally {
-      setVideoUploading(false);
-      if (videoInputRef.current) videoInputRef.current.value = '';
-    }
-  };
 
   useEffect(() => {
     api.get('/categories').then((r) => setCategories(r.data)).catch(() => {});
@@ -66,6 +48,16 @@ export default function ProductForm({ productId }: Props) {
         compareAtPrice: String(p.compareAtPrice ?? ''), cost: String(p.cost ?? ''),
         stock: String(p.stock ?? ''), sku: p.sku || '',
         images: p.images || [], video: p.video || '', specs: p.specs || [],
+        hasVariants: !!p.hasVariants,
+        variantLabel: p.variantLabel || 'Colour',
+        variants: (p.variants || []).map((v: any) => ({
+          label: v.label || '',
+          price: v.price ? String(v.price) : '',
+          stock: v.stock != null ? String(v.stock) : '',
+          sku: v.sku || '',
+          images: v.images?.length ? v.images : v.image ? [v.image] : [],
+          video: v.video || '',
+        })),
         tags: (p.tags || []).join(', '), featured: !!p.featured, isActive: p.isActive !== false,
       });
     }).catch(() => toast.error('Could not load product')).finally(() => setLoading(false));
@@ -75,6 +67,13 @@ export default function ProductForm({ productId }: Props) {
   const updateSpec = (i: number, key: string, value: string) =>
     set('specs', form.specs.map((s, idx) => (idx === i ? { key, value } : s)));
   const removeSpec = (i: number) => set('specs', form.specs.filter((_, idx) => idx !== i));
+
+  const addVariant = () =>
+    set('variants', [...form.variants, { label: '', price: '', stock: '', sku: '', images: [], video: '' }]);
+  const updateVariant = (i: number, key: string, value: any) =>
+    set('variants', form.variants.map((v, idx) => (idx === i ? { ...v, [key]: value } : v)));
+  const removeVariant = (i: number) =>
+    set('variants', form.variants.filter((_, idx) => idx !== i));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +92,21 @@ export default function ProductForm({ productId }: Props) {
       images: form.images,
       video: form.video.trim(),
       specs: form.specs.filter((s) => s.key),
+      hasVariants: form.hasVariants,
+      variantLabel: form.variantLabel.trim() || 'Variant',
+      variants: form.hasVariants
+        ? form.variants
+            .filter((v) => v.label.trim())
+            .map((v) => ({
+              label: v.label.trim(),
+              price: Number(v.price) || 0,
+              stock: Number(v.stock) || 0,
+              sku: v.sku.trim(),
+              images: v.images,
+              video: v.video.trim(),
+              image: v.images[0] || '', // legacy backward-compat
+            }))
+        : [],
       tags: form.tags.split(',').map((t) => t.trim()).filter(Boolean),
       featured: form.featured,
       isActive: form.isActive,
@@ -153,47 +167,9 @@ export default function ProductForm({ productId }: Props) {
           <h2 className="mb-4 flex items-center gap-2 font-semibold text-slate-800">
             <Video size={18} className="text-brand-500" /> Product video
           </h2>
-          <div className="flex gap-2">
-            <input
-              className="input flex-1"
-              placeholder="Paste a YouTube / Vimeo link or video URL"
-              value={form.video}
-              onChange={(e) => set('video', e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => videoInputRef.current?.click()}
-              disabled={videoUploading}
-              className="btn-outline whitespace-nowrap px-4"
-            >
-              {videoUploading ? <Loader2 className="animate-spin" size={16} /> : <><Upload size={16} /> Upload</>}
-            </button>
-            {form.video && (
-              <button
-                type="button"
-                onClick={() => set('video', '')}
-                className="grid w-10 shrink-0 place-items-center rounded-lg border border-slate-200 text-slate-400 hover:bg-red-50 hover:text-red-500"
-                aria-label="Remove video"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
-          <input
-            ref={videoInputRef}
-            type="file"
-            accept="video/*"
-            hidden
-            onChange={(e) => handleVideoFile(e.target.files?.[0])}
-          />
-          {form.video && (
-            <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-black">
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-              <video src={form.video} controls className="max-h-56 w-full" preload="metadata" />
-            </div>
-          )}
+          <VideoUploader value={form.video} onChange={(url) => set('video', url)} />
           <p className="mt-1.5 text-xs text-slate-400">
-            Paste a YouTube/Vimeo link, or upload a file to Cloudinary (max 100 MB). The preview shows uploaded/direct video files; links play on the product page.
+            Paste a YouTube/Vimeo link, or upload a file to Cloudinary (max 100 MB). Links play on the product page.
           </p>
         </div>
 
@@ -212,6 +188,78 @@ export default function ProductForm({ productId }: Props) {
             ))}
             {form.specs.length === 0 && <p className="text-sm text-slate-400">No specs added.</p>}
           </div>
+        </div>
+
+        {/* variants */}
+        <div className="card p-5">
+          <label className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-slate-800">Variants</h2>
+              <p className="text-xs text-slate-500">Offer choices like colour, size or storage.</p>
+            </div>
+            <input
+              type="checkbox"
+              className="h-5 w-5 accent-brand-500"
+              checked={form.hasVariants}
+              onChange={(e) => set('hasVariants', e.target.checked)}
+            />
+          </label>
+
+          {form.hasVariants && (
+            <div className="mt-4 space-y-4">
+              <div>
+                <label className="label">Option group name</label>
+                <input
+                  className="input max-w-xs"
+                  placeholder="e.g. Colour, Storage, Size"
+                  value={form.variantLabel}
+                  onChange={(e) => set('variantLabel', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-4">
+                {form.variants.map((v, i) => (
+                  <div key={i} className="rounded-xl border border-slate-200 p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-sm font-semibold text-slate-700">
+                        {v.label.trim() || `Variant ${i + 1}`}
+                      </span>
+                      <button type="button" onClick={() => removeVariant(i)} className="grid h-8 w-8 place-items-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500"><Trash2 size={16} /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                      <div>
+                        <label className="label">Option *</label>
+                        <input className="input" placeholder="Black" value={v.label} onChange={(e) => updateVariant(i, 'label', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">Price (৳)</label>
+                        <input className="input" type="number" placeholder="(base)" value={v.price} onChange={(e) => updateVariant(i, 'price', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">Stock</label>
+                        <input className="input" type="number" placeholder="0" value={v.stock} onChange={(e) => updateVariant(i, 'stock', e.target.value)} />
+                      </div>
+                      <div>
+                        <label className="label">SKU</label>
+                        <input className="input" placeholder="SKU" value={v.sku} onChange={(e) => updateVariant(i, 'sku', e.target.value)} />
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <label className="label">Images for this variant</label>
+                      <ImageUploader images={v.images} onChange={(urls) => updateVariant(i, 'images', urls)} />
+                    </div>
+                    <div className="mt-3">
+                      <label className="label">Video for this variant</label>
+                      <VideoUploader value={v.video} onChange={(url) => updateVariant(i, 'video', url)} compact />
+                    </div>
+                  </div>
+                ))}
+                {form.variants.length === 0 && <p className="text-sm text-slate-400">No variants yet.</p>}
+              </div>
+              <button type="button" onClick={addVariant} className="btn-ghost text-sm"><Plus size={15} /> Add variant</button>
+              <p className="text-xs text-slate-400">Leave price blank to use the base price. Stock is tracked per variant. Variant images/video replace the product&apos;s on the storefront when that option is selected.</p>
+            </div>
+          )}
         </div>
       </div>
 

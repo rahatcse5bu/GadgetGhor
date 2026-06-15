@@ -73,6 +73,7 @@ export default function AdminOrderDetailPage() {
                   <img src={it.image || '/placeholder.svg'} alt="" className="h-12 w-12 rounded-md object-cover" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-800">{it.name} {it.kind === 'bundle' && <Package size={12} className="ml-1 inline text-brand-500" />}</p>
+                    {it.variant && <p className="text-xs font-medium text-brand-600">{it.variant}</p>}
                     <p className="text-xs text-slate-400">{formatBDT(it.price)} × {it.quantity}</p>
                   </div>
                   <p className="font-medium">{formatBDT(it.price * it.quantity)}</p>

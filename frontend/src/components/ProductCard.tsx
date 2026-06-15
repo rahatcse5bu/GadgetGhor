@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ShoppingCart, SlidersHorizontal } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Product } from '@/lib/types';
 import { formatBDT, discountPercent } from '@/lib/format';
@@ -9,11 +10,21 @@ import Stars from './Stars';
 
 export default function ProductCard({ product }: { product: Product }) {
   const add = useCart((s) => s.add);
+  const router = useRouter();
+  const hasVariants = !!product.hasVariants && (product.variants?.length || 0) > 0;
   const off = discountPercent(product.price, product.compareAtPrice);
-  const outOfStock = product.stock <= 0;
+  // For variant products, in-stock means at least one variant has stock.
+  const outOfStock = hasVariants
+    ? !product.variants!.some((v) => (v.stock ?? 0) > 0)
+    : product.stock <= 0;
 
   const quickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
+    // Products with options must be chosen on the product page.
+    if (hasVariants) {
+      router.push(`/product/${product.slug}`);
+      return;
+    }
     if (outOfStock) return;
     add(
       {
@@ -78,11 +89,12 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
           <button
             onClick={quickAdd}
-            disabled={outOfStock}
+            disabled={!hasVariants && outOfStock}
             className="grid h-9 w-9 place-items-center rounded-lg bg-brand-50 text-brand-600 transition hover:bg-brand-500 hover:text-white disabled:opacity-40"
-            aria-label="Add to cart"
+            aria-label={hasVariants ? 'Choose options' : 'Add to cart'}
+            title={hasVariants ? 'Choose options' : 'Add to cart'}
           >
-            <ShoppingCart size={17} />
+            {hasVariants ? <SlidersHorizontal size={17} /> : <ShoppingCart size={17} />}
           </button>
         </div>
       </div>

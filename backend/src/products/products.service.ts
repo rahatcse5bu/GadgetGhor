@@ -112,6 +112,16 @@ export class ProductsService {
       .exec();
   }
 
+  async decrementVariantStock(id: string, label: string, qty: number) {
+    return this.model
+      .findByIdAndUpdate(
+        id,
+        { $inc: { 'variants.$[v].stock': -qty } },
+        { new: true, arrayFilters: [{ 'v.label': label }] },
+      )
+      .exec();
+  }
+
   // Admin listing including inactive products
   adminFindAll(q: ProductQuery) {
     return this.findAll({ ...q, includeInactive: true, limit: q.limit || 60 });

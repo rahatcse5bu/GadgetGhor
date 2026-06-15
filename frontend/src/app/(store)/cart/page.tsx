@@ -34,7 +34,7 @@ export default function CartPage() {
         <div className="lg:col-span-2">
           <div className="card divide-y divide-slate-100">
             {lines.map((l) => (
-              <div key={`${l.kind}-${l.id}`} className="flex gap-4 p-4">
+              <div key={`${l.kind}-${l.id}-${l.variant || ''}`} className="flex gap-4 p-4">
                 <Link href={l.kind === 'bundle' ? `/bundle/${l.slug}` : `/product/${l.slug}`}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={l.image || '/placeholder.svg'} alt={l.name} className="h-20 w-20 rounded-lg object-cover" />
@@ -50,18 +50,19 @@ export default function CartPage() {
                         <span className="badge ml-2 bg-brand-50 text-brand-600"><Package size={11} className="mr-0.5" /> Bundle</span>
                       )}
                     </Link>
-                    <button onClick={() => remove(l.kind, l.id)} className="text-slate-400 hover:text-red-500" aria-label="Remove">
+                    <button onClick={() => remove(l.kind, l.id, l.variant)} className="text-slate-400 hover:text-red-500" aria-label="Remove">
                       <Trash2 size={18} />
                     </button>
                   </div>
+                  {l.variant && <p className="text-xs text-slate-400">Option: {l.variant}</p>}
                   <p className="text-sm text-slate-500">{formatBDT(l.price)}</p>
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <div className="flex items-center rounded-lg border border-slate-300">
-                      <button onClick={() => setQty(l.kind, l.id, l.quantity - 1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50">
+                      <button onClick={() => setQty(l.kind, l.id, l.quantity - 1, l.variant)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50">
                         <Minus size={14} />
                       </button>
                       <span className="w-9 text-center text-sm font-medium">{l.quantity}</span>
-                      <button onClick={() => setQty(l.kind, l.id, l.quantity + 1)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50">
+                      <button onClick={() => setQty(l.kind, l.id, l.quantity + 1, l.variant)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50">
                         <Plus size={14} />
                       </button>
                     </div>

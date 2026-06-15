@@ -110,6 +110,47 @@ const products = [
   { name: 'Calling Smartwatch Ultra', category: 'smart-gadgets', subcategory: 'smartwatches', brand: 'Hoco', price: 2490, compareAtPrice: 3400, cost: 1100, stock: 48, sku: 'SMT-ULTRA', featured: false, img: 'photo-1523275335684-37898b6baf30', description: 'Rugged 49mm smartwatch with Bluetooth calling, always-on display and dual-strap design.', specs: [['Display', '2.0" HD'], ['Calls', 'Bluetooth'], ['Battery', '5 days']], tags: ['smartwatch', 'calling'] },
   { name: 'Smart Item Tracker (2-pack)', category: 'smart-gadgets', subcategory: 'item-trackers', brand: 'Baseus', price: 1290, compareAtPrice: 1700, cost: 500, stock: 70, sku: 'SMT-TRACK2', featured: false, img: 'photo-1558002038-1055907df827', description: 'Bluetooth key/wallet trackers with app finding, replaceable battery and loud ring. Pack of 2.', specs: [['Range', '~60m'], ['Battery', 'CR2032 replaceable']], tags: ['tracker', 'bluetooth'] },
   { name: 'Smart RGB Wi-Fi LED Bulb', category: 'smart-gadgets', subcategory: 'smart-home', brand: 'Xiaomi', price: 690, compareAtPrice: 950, cost: 250, stock: 160, sku: 'SMT-BULB', featured: false, img: 'photo-1558002038-1055907df827', description: '16-million-colour smart bulb with app and voice control (Alexa/Google). Schedules and scenes supported.', specs: [['Colours', '16M RGB'], ['Control', 'App + Voice'], ['Fit', 'E27']], tags: ['smart-home', 'lighting'] },
+
+  // ── Products WITH variants ──
+  {
+    name: 'ColorPods TWS Earbuds', category: 'audio', subcategory: 'earbuds', brand: 'Baseus',
+    price: 1990, compareAtPrice: 2600, cost: 820, stock: 0, sku: 'AUD-COLORPODS', featured: true,
+    img: 'photo-1590658268037-6bf12165a8df',
+    description: 'True-wireless earbuds in four fun colours. ENC calls, 28-hour battery and a pocketable case. Pick your colour below.',
+    specs: [['Battery', '28h total'], ['Bluetooth', '5.3'], ['Water', 'IPX4']], tags: ['earbuds', 'tws', 'colour'],
+    variantLabel: 'Colour',
+    variants: [
+      { label: 'Midnight Black', price: 1990, stock: 30, sku: 'CP-BLK', imgs: ['photo-1590658268037-6bf12165a8df', 'photo-1606220588913-b3aacb4d2f46'], video: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ' },
+      { label: 'Pearl White', price: 1990, stock: 25, sku: 'CP-WHT', imgs: ['photo-1606220588913-b3aacb4d2f46'] },
+      { label: 'Sky Blue', price: 2090, stock: 12, sku: 'CP-BLU', imgs: ['photo-1572569511254-d8f925fe2cbb'] },
+      { label: 'Rose Pink', price: 2090, stock: 0, sku: 'CP-PNK', imgs: ['photo-1583394838336-acd977736f90'] },
+    ],
+  },
+  {
+    name: 'Aurora Smartwatch', category: 'smart-gadgets', subcategory: 'smartwatches', brand: 'PulseTech',
+    price: 3490, compareAtPrice: 4600, cost: 1600, stock: 0, sku: 'SMT-AURORA', featured: true,
+    img: 'photo-1523275335684-37898b6baf30',
+    description: 'A 1.43" AMOLED smartwatch with Bluetooth calling and 100+ sport modes. Available in three finishes with matching straps.',
+    specs: [['Display', '1.43" AMOLED'], ['Battery', '7 days'], ['Calls', 'Bluetooth']], tags: ['smartwatch', 'wearable'],
+    variantLabel: 'Finish',
+    variants: [
+      { label: 'Graphite', price: 3490, stock: 18, sku: 'AUR-GRA', imgs: ['photo-1523275335684-37898b6baf30'], video: 'https://www.youtube.com/watch?v=ScMzIvxBSi4' },
+      { label: 'Silver', price: 3490, stock: 10, sku: 'AUR-SIL', imgs: ['photo-1508685096489-7aacd43bd3b1'] },
+      { label: 'Rose Gold', price: 3790, stock: 6, sku: 'AUR-RGD', imgs: ['photo-1434494878577-86c23bcb06b9'] },
+    ],
+  },
+  {
+    name: 'PowerMax Bank', category: 'power-charging', subcategory: 'power-banks', brand: 'VoltGo',
+    price: 1690, compareAtPrice: 2200, cost: 700, stock: 0, sku: 'PWR-POWERMAX', featured: false,
+    img: 'photo-1609592424823-69f0c3f0a1f9',
+    description: 'Fast-charging power bank available in two capacities. Choose the size that fits your day.',
+    specs: [['Output', '22.5W PD'], ['Display', 'Digital %']], tags: ['powerbank', 'capacity'],
+    variantLabel: 'Capacity',
+    variants: [
+      { label: '10000mAh', price: 1690, stock: 40, sku: 'PM-10K', imgs: ['photo-1609592424823-69f0c3f0a1f9'] },
+      { label: '20000mAh', price: 2290, stock: 22, sku: 'PM-20K', imgs: ['photo-1609592424823-69f0c3f0a1f9'] },
+    ],
+  },
 ];
 
 // ─────────────────────────────── BUNDLES ───────────────────────────────
@@ -210,17 +251,31 @@ async function run() {
 
   // ── Products ──
   const productBySku: Record<string, any> = {};
-  for (const p of products) {
+  for (const p of products as any[]) {
     const slug = slugify(p.name);
-    const doc = {
+    const hasVariants = !!p.variants?.length;
+    const doc: any = {
       name: p.name, slug, description: p.description, brand: p.brand,
       category: p.category, subcategory: p.subcategory,
       price: p.price, compareAtPrice: p.compareAtPrice, cost: p.cost,
       stock: p.stock, sku: p.sku, featured: p.featured,
       images: [IMG(p.img)],
-      specs: p.specs.map(([key, value]) => ({ key, value })),
+      specs: p.specs.map(([key, value]: [string, string]) => ({ key, value })),
       tags: p.tags, isActive: true, rating: 4.6,
       numReviews: ((p.sku.length * 7) % 80) + 12,
+      hasVariants,
+      variantLabel: p.variantLabel || 'Variant',
+      variants: hasVariants
+        ? p.variants.map((v: any) => ({
+            label: v.label,
+            price: v.price || 0,
+            stock: v.stock || 0,
+            sku: v.sku || '',
+            images: (v.imgs || []).map((id: string) => IMG(id)),
+            video: v.video || '',
+            image: v.imgs?.[0] ? IMG(v.imgs[0]) : '',
+          }))
+        : [],
     };
     await db.collection('products').updateOne(
       { slug },

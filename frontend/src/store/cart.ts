@@ -11,13 +11,19 @@ export interface CartLine {
   price: number;
   quantity: number;
   maxStock?: number;
+  variant?: string; // selected variant label, if any
 }
+
+// A cart line is uniquely identified by product + chosen variant, so the same
+// product in two variants (e.g. Black / White) are separate lines.
+const sameLine = (a: { kind: string; id: string; variant?: string }, kind: string, id: string, variant?: string) =>
+  a.kind === kind && a.id === id && (a.variant || '') === (variant || '');
 
 interface CartState {
   lines: CartLine[];
   add: (line: Omit<CartLine, 'quantity'>, qty?: number) => void;
-  remove: (kind: string, id: string) => void;
-  setQty: (kind: string, id: string, qty: number) => void;
+  remove: (kind: string, id: string, variant?: string) => void;
+  setQty: (kind: string, id: string, qty: number, variant?: string) => void;
   clear: () => void;
   count: () => number;
   subtotal: () => number;
@@ -29,13 +35,13 @@ export const useCart = create<CartState>()(
       lines: [],
       add: (line, qty = 1) =>
         set((state) => {
-          const existing = state.lines.find(
-            (l) => l.kind === line.kind && l.id === line.id,
+          const existing = state.lines.find((l) =>
+            sameLine(l, line.kind, line.id, line.variant),
           );
           if (existing) {
             return {
               lines: state.lines.map((l) =>
-                l.kind === line.kind && l.id === line.id
+                sameLine(l, line.kind, line.id, line.variant)
                   ? {
                       ...l,
                       quantity: Math.min(
@@ -54,15 +60,15 @@ export const useCart = create<CartState>()(
             ],
           };
         }),
-      remove: (kind, id) =>
+      remove: (kind, id, variant) =>
         set((state) => ({
-          lines: state.lines.filter((l) => !(l.kind === kind && l.id === id)),
+          lines: state.lines.filter((l) => !sameLine(l, kind, id, variant)),
         })),
-      setQty: (kind, id, qty) =>
+      setQty: (kind, id, qty, variant) =>
         set((state) => ({
           lines: state.lines
             .map((l) =>
-              l.kind === kind && l.id === id
+              sameLine(l, kind, id, variant)
                 ? { ...l, quantity: Math.max(1, Math.min(qty, l.maxStock ?? 99)) }
                 : l,
             )

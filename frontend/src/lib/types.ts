@@ -3,6 +3,16 @@ export interface Spec {
   value: string;
 }
 
+export interface Variant {
+  label: string;
+  price?: number;
+  stock?: number;
+  sku?: string;
+  images?: string[];
+  video?: string;
+  image?: string; // legacy single image
+}
+
 export interface Product {
   _id: string;
   name: string;
@@ -17,6 +27,9 @@ export interface Product {
   stock: number;
   sku: string;
   specs: Spec[];
+  hasVariants?: boolean;
+  variantLabel?: string;
+  variants?: Variant[];
   tags: string[];
   featured: boolean;
   isActive: boolean;
@@ -57,6 +70,7 @@ export interface OrderItem {
   name: string;
   slug: string;
   image: string;
+  variant?: string;
   price: number;
   quantity: number;
 }

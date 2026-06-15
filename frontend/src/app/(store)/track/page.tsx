@@ -142,7 +142,7 @@ function TrackInner() {
                 <div key={i} className="flex items-center gap-3 py-2.5">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.image || '/placeholder.svg'} alt="" className="h-11 w-11 rounded-md object-cover" />
-                  <p className="flex-1 text-sm text-slate-700">{it.name} × {it.quantity}</p>
+                  <p className="flex-1 text-sm text-slate-700">{it.name}{it.variant ? ` · ${it.variant}` : ''} × {it.quantity}</p>
                   <p className="text-sm font-medium">{formatBDT(it.price * it.quantity)}</p>
                 </div>
               ))}

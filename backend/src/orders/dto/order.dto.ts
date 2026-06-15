@@ -18,6 +18,11 @@ class OrderItemInput {
 
   @Min(1)
   quantity: number;
+
+  // Selected variant label, if the product has variants.
+  @IsOptional()
+  @IsString()
+  variant?: string;
 }
 
 class CustomerInput {

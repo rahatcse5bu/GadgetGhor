@@ -56,7 +56,7 @@ export default function CheckoutPage() {
           address: form.address, area: form.area,
           city: form.city, postcode: form.postcode,
         },
-        items: lines.map((l) => ({ kind: l.kind, id: l.id, quantity: l.quantity })),
+        items: lines.map((l) => ({ kind: l.kind, id: l.id, quantity: l.quantity, variant: l.variant })),
         paymentMethod: form.paymentMethod,
         customerNote: form.customerNote,
       });
@@ -152,7 +152,7 @@ export default function CheckoutPage() {
             <h2 className="mb-4 font-semibold text-slate-800">Your order</h2>
             <div className="max-h-64 space-y-3 overflow-auto">
               {mounted && lines.map((l) => (
-                <div key={`${l.kind}-${l.id}`} className="flex gap-3">
+                <div key={`${l.kind}-${l.id}-${l.variant || ''}`} className="flex gap-3">
                   <div className="relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={l.image || '/placeholder.svg'} alt={l.name} className="h-14 w-14 rounded-md object-cover" />
@@ -163,6 +163,7 @@ export default function CheckoutPage() {
                       {l.name}
                       {l.kind === 'bundle' && <Package size={11} className="ml-1 inline text-brand-500" />}
                     </p>
+                    {l.variant && <p className="text-xs text-slate-400">{l.variant}</p>}
                   </div>
                   <p className="text-sm font-medium text-slate-800">{formatBDT(l.price * l.quantity)}</p>
                 </div>

@@ -4,16 +4,21 @@ import Link from 'next/link';
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Package } from 'lucide-react';
 import { useCart } from '@/store/cart';
 import { formatBDT } from '@/lib/format';
+import { api } from '@/lib/api';
 
 export default function CartPage() {
   const { lines, setQty, remove, subtotal } = useCart();
   const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const [threshold, setThreshold] = useState(0);
+  useEffect(() => {
+    setMounted(true);
+    api.get('/settings').then((r) => setThreshold(r.data.freeShippingThreshold || 0)).catch(() => {});
+  }, []);
 
   if (!mounted) return <div className="container-x py-24" />;
 
   const sub = subtotal();
-  const freeShip = sub >= 5000;
+  const freeShip = threshold > 0 && sub >= threshold;
 
   if (lines.length === 0) {
     return (
@@ -88,9 +93,9 @@ export default function CartPage() {
                 <span className="font-medium">{freeShip ? 'Free' : 'Calculated at checkout'}</span>
               </div>
             </div>
-            {!freeShip && (
+            {threshold > 0 && !freeShip && (
               <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
-                Add {formatBDT(5000 - sub)} more for <strong>free delivery</strong>.
+                Add {formatBDT(threshold - sub)} more for <strong>free delivery</strong>.
               </p>
             )}
             <div className="mt-4 flex justify-between border-t border-slate-100 pt-4">

@@ -64,6 +64,16 @@ export interface Category {
   image: string;
 }
 
+export interface Brand {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  logo: string;
+  country: string;
+  featured: boolean;
+}
+
 export interface OrderItem {
   kind: 'product' | 'bundle';
   refId: string;
@@ -97,6 +107,11 @@ export interface Order {
   total: number;
   paymentMethod: string;
   paymentStatus: string;
+  paymentChannel?: string;
+  paymentNumber?: string;
+  transactionId?: string;
+  amountPaid?: number;
+  dueAmount?: number;
   status: string;
   trackingCarrier?: string;
   trackingCode?: string;
@@ -110,4 +125,14 @@ export interface Paginated<T> {
   total: number;
   page: number;
   pages: number;
+}
+
+export interface Settings {
+  dhakaDeliveryFee: number;
+  outsideDeliveryFee: number;
+  freeShippingThreshold: number;
+  bkashNumber: string;
+  nagadNumber: string;
+  rocketNumber: string;
+  paymentInstructions: string;
 }

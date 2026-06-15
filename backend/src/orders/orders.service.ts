@@ -10,10 +10,7 @@ import { CreateOrderDto, UpdateStatusDto } from './dto/order.dto';
 import { ProductsService } from '../products/products.service';
 import { BundlesService } from '../bundles/bundles.service';
 import { MailService } from '../mail/mail.service';
-
-const FREE_SHIPPING_THRESHOLD = 5000;
-const DHAKA_FEE = 60;
-const OUTSIDE_FEE = 120;
+import { SettingsService } from '../settings/settings.service';
 
 function genOrderNumber() {
   const ts = Date.now().toString(36).toUpperCase().slice(-5);
@@ -31,11 +28,19 @@ export class OrdersService {
     private products: ProductsService,
     private bundles: BundlesService,
     private mail: MailService,
+    private settings: SettingsService,
   ) {}
 
-  private computeShipping(subtotal: number, city: string) {
-    if (subtotal >= FREE_SHIPPING_THRESHOLD) return 0;
-    return /dhaka/i.test(city || '') ? DHAKA_FEE : OUTSIDE_FEE;
+  private computeShipping(
+    subtotal: number,
+    city: string,
+    cfg: { dhakaDeliveryFee: number; outsideDeliveryFee: number; freeShippingThreshold: number },
+  ) {
+    if (cfg.freeShippingThreshold > 0 && subtotal >= cfg.freeShippingThreshold)
+      return 0;
+    return /dhaka/i.test(city || '')
+      ? cfg.dhakaDeliveryFee
+      : cfg.outsideDeliveryFee;
   }
 
   async create(dto: CreateOrderDto, userId?: string) {
@@ -102,11 +107,45 @@ export class OrdersService {
       }
     }
 
-    const shippingFee = this.computeShipping(
-      subtotal,
-      dto.shippingAddress.city,
-    );
+    const settings = await this.settings.get();
+    const shippingFee = this.computeShipping(subtotal, dto.shippingAddress.city, settings);
     const total = subtotal + shippingFee;
+
+    // ── Payment handling ──
+    const method = dto.paymentMethod || 'cod';
+    let amountPaid = 0;
+    let dueAmount = total;
+    let paymentStatus = 'unpaid';
+    let paymentChannel = '';
+
+    if (method === 'bkash' || method === 'nagad') {
+      // Full online payment up front.
+      if (!dto.transactionId?.trim() || !dto.paymentNumber?.trim())
+        throw new BadRequestException(
+          `Please enter your ${method} number and the transaction ID`,
+        );
+      amountPaid = total;
+      dueAmount = 0;
+      paymentStatus = 'paid';
+      paymentChannel = method;
+    } else {
+      // Cash on Delivery — the delivery charge must be paid in advance.
+      if (shippingFee > 0) {
+        if (!dto.paymentChannel || !dto.transactionId?.trim() || !dto.paymentNumber?.trim())
+          throw new BadRequestException(
+            'For Cash on Delivery, pay the delivery charge in advance and provide the wallet number and transaction ID',
+          );
+        amountPaid = shippingFee;
+        dueAmount = subtotal;
+        paymentStatus = 'partial';
+        paymentChannel = dto.paymentChannel;
+      } else {
+        // Free delivery → nothing to pay in advance.
+        amountPaid = 0;
+        dueAmount = total;
+        paymentStatus = 'unpaid';
+      }
+    }
 
     // Reduce stock for products (variant-level when a variant was chosen)
     for (const it of resolvedItems) {
@@ -132,8 +171,13 @@ export class OrdersService {
       subtotal,
       shippingFee,
       total,
-      paymentMethod: dto.paymentMethod || 'cod',
-      paymentStatus: 'unpaid',
+      paymentMethod: method,
+      paymentStatus,
+      paymentChannel,
+      paymentNumber: dto.paymentNumber?.trim() || '',
+      transactionId: dto.transactionId?.trim() || '',
+      amountPaid,
+      dueAmount,
       status: 'pending',
       customerNote: dto.customerNote || '',
       statusHistory: [
@@ -177,6 +221,10 @@ export class OrdersService {
       total: order.total,
       paymentMethod: order.paymentMethod,
       paymentStatus: order.paymentStatus,
+      paymentChannel: order.paymentChannel,
+      transactionId: order.transactionId,
+      amountPaid: order.amountPaid,
+      dueAmount: order.dueAmount,
       shippingAddress: order.shippingAddress,
       customer: { name: order.customer.name },
       createdAt: (order as any).createdAt,

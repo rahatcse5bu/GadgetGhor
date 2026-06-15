@@ -56,6 +56,19 @@ export class CreateOrderDto {
   @IsIn(['cod', 'bkash', 'nagad', 'card'])
   paymentMethod?: string;
 
+  // Wallet used for the advance (COD) or full (online) payment.
+  @IsOptional()
+  @IsIn(['bkash', 'nagad', 'rocket'])
+  paymentChannel?: string;
+
+  @IsOptional()
+  @IsString()
+  paymentNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  transactionId?: string;
+
   @IsOptional()
   @IsString()
   customerNote?: string;

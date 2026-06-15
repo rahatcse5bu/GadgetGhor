@@ -63,9 +63,15 @@ function ThankYouInner() {
             <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span>{formatBDT(order.subtotal)}</span></div>
             <div className="flex justify-between"><span className="text-slate-500">Shipping</span><span>{order.shippingFee === 0 ? 'Free' : formatBDT(order.shippingFee)}</span></div>
             <div className="flex justify-between border-t border-slate-100 pt-2 text-base font-bold text-slate-900"><span>Total</span><span>{formatBDT(order.total)}</span></div>
+            {!!order.amountPaid && (
+              <div className="flex justify-between text-green-700"><span>Paid in advance</span><span>{formatBDT(order.amountPaid)}</span></div>
+            )}
+            {!!order.dueAmount && (
+              <div className="flex justify-between font-semibold text-amber-700"><span>Due on delivery</span><span>{formatBDT(order.dueAmount)}</span></div>
+            )}
           </div>
           <p className="mt-4 text-sm text-slate-500">
-            Payment: <strong className="text-slate-700">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</strong> ·
+            Payment: <strong className="text-slate-700 capitalize">{order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</strong> ·
             Delivering to <strong className="text-slate-700">{order.shippingAddress.city}</strong>
           </p>
         </div>

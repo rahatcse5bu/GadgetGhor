@@ -82,6 +82,16 @@ export class MailService {
         <tr><td style="padding:8px 0;text-align:right;color:#64748b;">Subtotal</td><td style="padding:8px 0;text-align:right;">${TK}${order.subtotal.toLocaleString('en-BD')}</td></tr>
         <tr><td style="padding:4px 0;text-align:right;color:#64748b;">Shipping</td><td style="padding:4px 0;text-align:right;">${TK}${order.shippingFee.toLocaleString('en-BD')}</td></tr>
         <tr><td style="padding:8px 0;text-align:right;font-weight:bold;font-size:16px;">Total</td><td style="padding:8px 0;text-align:right;font-weight:bold;font-size:16px;color:#2C8198;">${TK}${order.total.toLocaleString('en-BD')}</td></tr>
+        ${
+          order.amountPaid
+            ? `<tr><td style="padding:4px 0;text-align:right;color:#16a34a;">Paid in advance</td><td style="padding:4px 0;text-align:right;color:#16a34a;">${TK}${order.amountPaid.toLocaleString('en-BD')}</td></tr>`
+            : ''
+        }
+        ${
+          order.dueAmount
+            ? `<tr><td style="padding:4px 0;text-align:right;color:#d97706;font-weight:bold;">Due on delivery</td><td style="padding:4px 0;text-align:right;color:#d97706;font-weight:bold;">${TK}${order.dueAmount.toLocaleString('en-BD')}</td></tr>`
+            : ''
+        }
       </table>`;
   }
 

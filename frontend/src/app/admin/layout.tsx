@@ -6,7 +6,9 @@ import {
   LayoutDashboard,
   Package,
   Boxes,
+  Tags,
   ShoppingBag,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -19,7 +21,9 @@ const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package },
   { href: '/admin/bundles', label: 'Bundles', icon: Boxes },
+  { href: '/admin/brands', label: 'Brands', icon: Tags },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },
+  { href: '/admin/settings', label: 'Settings', icon: Settings },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

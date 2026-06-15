@@ -2,36 +2,69 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Loader2, Lock, ShieldCheck, Truck, Package } from 'lucide-react';
+import { Loader2, Lock, ShieldCheck, Truck, Package, Wallet, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useCart } from '@/store/cart';
 import { api, apiError } from '@/lib/api';
 import { formatBDT } from '@/lib/format';
+import { Settings } from '@/lib/types';
 
-const PAYMENTS = [
-  { id: 'cod', label: 'Cash on Delivery', desc: 'Pay when you receive your order' },
-  { id: 'bkash', label: 'bKash', desc: 'Send money / merchant payment' },
-  { id: 'nagad', label: 'Nagad', desc: 'Mobile financial service' },
+const METHODS = [
+  { id: 'cod', label: 'Cash on Delivery', desc: 'Pay the delivery charge now, the rest on delivery' },
+  { id: 'bkash', label: 'bKash', desc: 'Pay the full amount now' },
+  { id: 'nagad', label: 'Nagad', desc: 'Pay the full amount now' },
 ];
+const COD_CHANNELS = ['bkash', 'nagad', 'rocket'] as const;
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { lines, subtotal, clear } = useCart();
   const [mounted, setMounted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [form, setForm] = useState({
     name: '', email: '', phone: '',
     address: '', area: '', city: '', postcode: '',
     paymentMethod: 'cod', customerNote: '',
+    // payment proof
+    codChannel: 'bkash', paymentNumber: '', transactionId: '',
   });
 
-  useEffect(() => setMounted(true), []);
-
-  const sub = subtotal();
-  const shipping = sub >= 5000 ? 0 : /dhaka/i.test(form.city) ? 60 : form.city ? 120 : 0;
-  const total = sub + shipping;
+  useEffect(() => {
+    setMounted(true);
+    api.get('/settings').then((r) => setSettings(r.data)).catch(() => {});
+  }, []);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const sub = subtotal();
+  const dhakaFee = settings?.dhakaDeliveryFee ?? 60;
+  const outsideFee = settings?.outsideDeliveryFee ?? 120;
+  const threshold = settings?.freeShippingThreshold ?? 0;
+  const shipping =
+    threshold > 0 && sub >= threshold
+      ? 0
+      : !form.city
+        ? 0
+        : /dhaka/i.test(form.city)
+          ? dhakaFee
+          : outsideFee;
+  const total = sub + shipping;
+
+  const isOnline = form.paymentMethod === 'bkash' || form.paymentMethod === 'nagad';
+  // Wallet the money is sent to (merchant). Online = the method; COD = chosen channel.
+  const activeChannel = isOnline ? form.paymentMethod : form.codChannel;
+  const merchantNumber =
+    activeChannel === 'bkash' ? settings?.bkashNumber
+    : activeChannel === 'nagad' ? settings?.nagadNumber
+    : activeChannel === 'rocket' ? settings?.rocketNumber
+    : '';
+
+  // How much to pay now vs. on delivery.
+  const codAdvance = shipping; // delivery charge paid up front for COD
+  const payNow = isOnline ? total : codAdvance;
+  const dueOnDelivery = isOnline ? 0 : sub;
+  const needsProof = isOnline || (form.paymentMethod === 'cod' && codAdvance > 0);
 
   if (mounted && lines.length === 0) {
     return (
@@ -48,6 +81,10 @@ export default function CheckoutPage() {
       toast.error('Please fill in all required fields');
       return;
     }
+    if (needsProof && (!form.paymentNumber.trim() || !form.transactionId.trim())) {
+      toast.error('Please enter the wallet number you paid from and the Transaction ID');
+      return;
+    }
     setSubmitting(true);
     try {
       const { data } = await api.post('/orders', {
@@ -58,6 +95,9 @@ export default function CheckoutPage() {
         },
         items: lines.map((l) => ({ kind: l.kind, id: l.id, quantity: l.quantity, variant: l.variant })),
         paymentMethod: form.paymentMethod,
+        paymentChannel: isOnline ? form.paymentMethod : form.codChannel,
+        paymentNumber: needsProof ? form.paymentNumber : '',
+        transactionId: needsProof ? form.transactionId : '',
         customerNote: form.customerNote,
       });
       clear();
@@ -67,6 +107,8 @@ export default function CheckoutPage() {
       setSubmitting(false);
     }
   };
+
+  const channelLabel = (c: string) => c.charAt(0).toUpperCase() + c.slice(1);
 
   return (
     <div className="container-x py-8">
@@ -108,6 +150,7 @@ export default function CheckoutPage() {
               <div>
                 <label className="label">City / District *</label>
                 <input className="input" value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. Dhaka" />
+                <p className="mt-1 text-xs text-slate-400">Type &quot;Dhaka&quot; for inside-Dhaka delivery rate.</p>
               </div>
               <div>
                 <label className="label">Postcode</label>
@@ -123,7 +166,7 @@ export default function CheckoutPage() {
           <section className="card p-5">
             <h2 className="mb-4 font-semibold text-slate-800">Payment method</h2>
             <div className="space-y-3">
-              {PAYMENTS.map((p) => (
+              {METHODS.map((p) => (
                 <label
                   key={p.id}
                   className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3.5 transition ${
@@ -143,6 +186,51 @@ export default function CheckoutPage() {
                 </label>
               ))}
             </div>
+
+            {/* COD advance: choose which wallet to pay the delivery charge from */}
+            {form.paymentMethod === 'cod' && codAdvance > 0 && (
+              <div className="mt-4 rounded-lg bg-amber-50 p-3.5">
+                <p className="flex items-center gap-1.5 text-sm font-medium text-amber-800">
+                  <Info size={15} /> Pay the delivery charge ({formatBDT(codAdvance)}) in advance to confirm your order.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {COD_CHANNELS.map((c) => (
+                    <button
+                      key={c} type="button" onClick={() => set('codChannel', c)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm capitalize ${
+                        form.codChannel === c ? 'border-brand-500 bg-white font-medium text-brand-700' : 'border-slate-300 bg-white text-slate-600'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* payment proof (online full, or COD advance) */}
+            {needsProof && (
+              <div className="mt-4 rounded-lg border border-brand-100 bg-brand-50/60 p-4">
+                <p className="flex items-center gap-2 text-sm font-semibold text-brand-800">
+                  <Wallet size={16} />
+                  Send {formatBDT(payNow)} via {channelLabel(activeChannel)}
+                </p>
+                <p className="mt-1 text-sm text-slate-600">
+                  to <strong className="text-slate-900">{merchantNumber || '— number not set —'}</strong>
+                  {settings?.paymentInstructions ? ` · ${settings.paymentInstructions}` : ''}
+                </p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Your {channelLabel(activeChannel)} number *</label>
+                    <input className="input" value={form.paymentNumber} onChange={(e) => set('paymentNumber', e.target.value)} placeholder="01XXXXXXXXX" />
+                  </div>
+                  <div>
+                    <label className="label">Transaction ID *</label>
+                    <input className="input" value={form.transactionId} onChange={(e) => set('transactionId', e.target.value)} placeholder="e.g. 9F3KD2A1B7" />
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </div>
 
@@ -172,11 +260,23 @@ export default function CheckoutPage() {
 
             <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm">
               <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span className="font-medium">{formatBDT(sub)}</span></div>
-              <div className="flex justify-between"><span className="text-slate-500">Shipping</span><span className="font-medium">{shipping === 0 ? (form.city ? 'Free' : '—') : formatBDT(shipping)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500">Delivery {form.city ? (/dhaka/i.test(form.city) ? '(inside Dhaka)' : '(outside Dhaka)') : ''}</span><span className="font-medium">{!form.city ? '—' : shipping === 0 ? 'Free' : formatBDT(shipping)}</span></div>
             </div>
             <div className="mt-3 flex justify-between border-t border-slate-100 pt-3">
               <span className="font-semibold text-slate-800">Total</span>
               <span className="text-xl font-bold text-brand-700">{formatBDT(total)}</span>
+            </div>
+
+            {/* pay-now / due breakdown */}
+            <div className="mt-3 space-y-1.5 rounded-lg bg-slate-50 p-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Pay now {form.paymentMethod === 'cod' ? '(delivery charge)' : ''}</span>
+                <span className="font-semibold text-green-700">{formatBDT(payNow)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Due on delivery</span>
+                <span className="font-semibold text-amber-700">{formatBDT(dueOnDelivery)}</span>
+              </div>
             </div>
 
             <button type="submit" disabled={submitting} className="btn-accent mt-5 w-full py-3.5 text-base">
@@ -184,7 +284,7 @@ export default function CheckoutPage() {
             </button>
 
             <div className="mt-4 space-y-1.5 text-xs text-slate-500">
-              <p className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-green-500" /> Secure & encrypted checkout</p>
+              <p className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-green-500" /> Secure &amp; encrypted checkout</p>
               <p className="flex items-center gap-1.5"><Truck size={14} className="text-brand-500" /> Delivery in 1–3 business days</p>
             </div>
           </div>

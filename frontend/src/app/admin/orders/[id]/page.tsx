@@ -105,6 +105,24 @@ export default function AdminOrderDetailPage() {
             )}
           </div>
 
+          {/* payment */}
+          <div className="card p-5">
+            <h2 className="mb-4 font-semibold text-slate-800">Payment</h2>
+            <div className="grid gap-3 text-sm sm:grid-cols-2">
+              <p className="text-slate-600">Method: <strong className="capitalize text-slate-800">{order.paymentMethod}</strong></p>
+              <p className="text-slate-600">Status:{' '}
+                <span className={`badge ${order.paymentStatus === 'paid' ? 'bg-green-100 text-green-700' : order.paymentStatus === 'partial' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
+                  {order.paymentStatus}
+                </span>
+              </p>
+              <p className="text-slate-600">Paid: <strong className="text-green-700">{formatBDT(order.amountPaid || 0)}</strong></p>
+              <p className="text-slate-600">Due on delivery: <strong className="text-amber-700">{formatBDT(order.dueAmount || 0)}</strong></p>
+              {order.paymentChannel && <p className="text-slate-600">Wallet: <strong className="capitalize text-slate-800">{order.paymentChannel}</strong></p>}
+              {order.paymentNumber && <p className="text-slate-600">Paid from: <strong className="text-slate-800">{order.paymentNumber}</strong></p>}
+              {order.transactionId && <p className="text-slate-600 sm:col-span-2">Transaction ID: <strong className="text-slate-800">{order.transactionId}</strong></p>}
+            </div>
+          </div>
+
           {/* history */}
           <div className="card p-5">
             <h2 className="mb-4 font-semibold text-slate-800">Status history</h2>

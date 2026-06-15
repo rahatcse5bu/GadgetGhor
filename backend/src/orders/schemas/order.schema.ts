@@ -94,8 +94,29 @@ export class Order {
   @Prop({ enum: ['cod', 'bkash', 'nagad', 'card'], default: 'cod' })
   paymentMethod: string;
 
-  @Prop({ enum: ['unpaid', 'paid', 'refunded'], default: 'unpaid' })
+  @Prop({ enum: ['unpaid', 'partial', 'paid', 'refunded'], default: 'unpaid' })
   paymentStatus: string;
+
+  // ── Payment proof ──
+  // Wallet the customer paid from: bkash / nagad / rocket (for COD advance,
+  // or equal to paymentMethod for online payments).
+  @Prop({ default: '' })
+  paymentChannel: string;
+
+  // Customer's wallet number the payment was sent from.
+  @Prop({ default: '' })
+  paymentNumber: string;
+
+  @Prop({ default: '' })
+  transactionId: string;
+
+  // Amount already paid (delivery charge for COD, or full total for online).
+  @Prop({ default: 0, min: 0 })
+  amountPaid: number;
+
+  // Amount still due (collected on delivery for COD).
+  @Prop({ default: 0, min: 0 })
+  dueAmount: number;
 
   @Prop({ enum: ORDER_STATUSES, default: 'pending', index: true })
   status: string;

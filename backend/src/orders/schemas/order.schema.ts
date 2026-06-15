@@ -15,6 +15,15 @@ export const ORDER_STATUSES = [
 ] as const;
 
 @Schema({ _id: false })
+class BundleComponent {
+  @Prop() name: string;
+  @Prop() image: string;
+  @Prop({ default: 0 }) price: number;
+  @Prop({ default: 1 }) quantity: number;
+}
+const BundleComponentSchema = SchemaFactory.createForClass(BundleComponent);
+
+@Schema({ _id: false })
 class OrderItem {
   @Prop({ enum: ['product', 'bundle'], default: 'product' })
   kind: string;
@@ -37,6 +46,10 @@ class OrderItem {
 
   @Prop({ required: true, min: 1 })
   quantity: number;
+
+  // For bundle items: the products contained in the bundle (snapshot).
+  @Prop({ type: [BundleComponentSchema], default: [] })
+  bundleItems: BundleComponent[];
 }
 const OrderItemSchema = SchemaFactory.createForClass(OrderItem);
 

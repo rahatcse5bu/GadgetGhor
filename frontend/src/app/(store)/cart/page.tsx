@@ -10,10 +10,27 @@ export default function CartPage() {
   const { lines, setQty, remove, subtotal } = useCart();
   const [mounted, setMounted] = useState(false);
   const [threshold, setThreshold] = useState(0);
+  // Fallback bundle contents for cart lines added before contents were stored.
+  const [bundleContents, setBundleContents] = useState<Record<string, { name: string; image: string; price: number; quantity: number }[]>>({});
   useEffect(() => {
     setMounted(true);
     api.get('/settings').then((r) => setThreshold(r.data.freeShippingThreshold || 0)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    lines
+      .filter((l) => l.kind === 'bundle' && !(l.bundleItems && l.bundleItems.length) && !bundleContents[l.id])
+      .forEach((l) => {
+        api.get(`/bundles/slug/${l.slug}`).then((r) => {
+          const items = (r.data.items || []).map((it: any) => ({
+            name: it.product?.name || '', image: it.product?.images?.[0] || '',
+            price: it.product?.price || 0, quantity: it.quantity || 1,
+          }));
+          setBundleContents((m) => ({ ...m, [l.id]: items }));
+        }).catch(() => {});
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
 
   if (!mounted) return <div className="container-x py-24" />;
 
@@ -61,6 +78,29 @@ export default function CartPage() {
                   </div>
                   {l.variant && <p className="text-xs text-slate-400">Option: {l.variant}</p>}
                   <p className="text-sm text-slate-500">{formatBDT(l.price)}</p>
+
+                  {l.kind === 'bundle' && (() => {
+                    const items = l.bundleItems?.length ? l.bundleItems : bundleContents[l.id] || [];
+                    if (!items.length) return null;
+                    return (
+                      <div className="mt-2 rounded-lg bg-slate-50 p-2.5">
+                        <p className="mb-1 text-xs font-medium text-slate-500">
+                          Includes {items.reduce((n, b) => n + b.quantity, 0)} items:
+                        </p>
+                        <ul className="space-y-1">
+                          {items.map((b, i) => (
+                            <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={b.image || '/placeholder.svg'} alt="" className="h-6 w-6 rounded object-cover" />
+                              <span className="flex-1 truncate">{b.name} × {b.quantity}</span>
+                              <span className="text-slate-400">{formatBDT(b.price)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  })()}
+
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <div className="flex items-center rounded-lg border border-slate-300">
                       <button onClick={() => setQty(l.kind, l.id, l.quantity - 1, l.variant)} className="grid h-9 w-9 place-items-center text-slate-600 hover:bg-slate-50">

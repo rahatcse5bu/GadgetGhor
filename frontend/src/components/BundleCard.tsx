@@ -19,6 +19,12 @@ export default function BundleCard({ bundle }: { bundle: Bundle }) {
         name: bundle.name,
         image: bundle.images?.[0] || bundle.items?.[0]?.product?.images?.[0] || '',
         price: bundle.bundlePrice,
+        bundleItems: (bundle.items || []).map((it) => ({
+          name: it.product?.name || '',
+          image: it.product?.images?.[0] || '',
+          price: it.product?.price || 0,
+          quantity: it.quantity || 1,
+        })),
       },
       1,
     );

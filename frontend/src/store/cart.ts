@@ -12,6 +12,7 @@ export interface CartLine {
   quantity: number;
   maxStock?: number;
   variant?: string; // selected variant label, if any
+  bundleItems?: { name: string; image: string; price: number; quantity: number }[];
 }
 
 // A cart line is uniquely identified by product + chosen variant, so the same

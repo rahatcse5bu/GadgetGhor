@@ -252,6 +252,13 @@ export default function CheckoutPage() {
                       {l.kind === 'bundle' && <Package size={11} className="ml-1 inline text-brand-500" />}
                     </p>
                     {l.variant && <p className="text-xs text-slate-400">{l.variant}</p>}
+                    {l.kind === 'bundle' && l.bundleItems && l.bundleItems.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {l.bundleItems.map((b, i) => (
+                          <li key={i} className="text-xs text-slate-400">• {b.name} × {b.quantity}</li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   <p className="text-sm font-medium text-slate-800">{formatBDT(l.price * l.quantity)}</p>
                 </div>

@@ -64,6 +64,12 @@ export class OrdersService {
           image: bundle.images?.[0] || bundle.items?.[0]?.product?.images?.[0] || '',
           price,
           quantity: item.quantity,
+          bundleItems: (bundle.items || []).map((bi: any) => ({
+            name: bi.product?.name || '',
+            image: bi.product?.images?.[0] || '',
+            price: bi.product?.price || 0,
+            quantity: bi.quantity || 1,
+          })),
         });
       } else {
         const product: any = await this.products.findOne(item.id);

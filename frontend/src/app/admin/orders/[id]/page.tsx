@@ -75,6 +75,13 @@ export default function AdminOrderDetailPage() {
                     <p className="text-sm font-medium text-slate-800">{it.name} {it.kind === 'bundle' && <Package size={12} className="ml-1 inline text-brand-500" />}</p>
                     {it.variant && <p className="text-xs font-medium text-brand-600">{it.variant}</p>}
                     <p className="text-xs text-slate-400">{formatBDT(it.price)} × {it.quantity}</p>
+                    {it.kind === 'bundle' && it.bundleItems?.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {it.bundleItems.map((b: any, bi: number) => (
+                          <li key={bi} className="text-xs text-slate-500">• {b.name} × {b.quantity} <span className="text-slate-400">({formatBDT(b.price)})</span></li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                   <p className="font-medium">{formatBDT(it.price * it.quantity)}</p>
                 </div>

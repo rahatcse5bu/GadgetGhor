@@ -75,6 +75,13 @@ export interface Brand {
   featured: boolean;
 }
 
+export interface BundleComponent {
+  name: string;
+  image: string;
+  price: number;
+  quantity: number;
+}
+
 export interface OrderItem {
   kind: 'product' | 'bundle';
   refId: string;
@@ -84,6 +91,7 @@ export interface OrderItem {
   variant?: string;
   price: number;
   quantity: number;
+  bundleItems?: BundleComponent[];
 }
 
 export interface StatusEvent {

@@ -62,6 +62,7 @@ export interface Category {
   slug: string;
   description: string;
   image: string;
+  parent?: string | null;
 }
 
 export interface Brand {

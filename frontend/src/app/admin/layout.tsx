@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Package,
+  FolderTree,
   Boxes,
   Tags,
   ShoppingBag,
@@ -20,6 +21,7 @@ import { api } from '@/lib/api';
 const NAV = [
   { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/admin/products', label: 'Products', icon: Package },
+  { href: '/admin/categories', label: 'Categories', icon: FolderTree },
   { href: '/admin/bundles', label: 'Bundles', icon: Boxes },
   { href: '/admin/brands', label: 'Brands', icon: Tags },
   { href: '/admin/orders', label: 'Orders', icon: ShoppingBag },

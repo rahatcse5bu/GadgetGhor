@@ -16,6 +16,21 @@ const METHODS = [
 ];
 const COD_CHANNELS = ['bkash', 'nagad', 'rocket'] as const;
 
+// 64 districts of Bangladesh (Dhaka gets the inside-Dhaka delivery rate).
+const DISTRICTS = [
+  'Bagerhat', 'Bandarban', 'Barguna', 'Barishal', 'Bhola', 'Bogura', 'Brahmanbaria',
+  'Chandpur', 'Chapainawabganj', 'Chattogram', 'Chuadanga', "Cox's Bazar", 'Cumilla',
+  'Dhaka', 'Dinajpur', 'Faridpur', 'Feni', 'Gaibandha', 'Gazipur', 'Gopalganj',
+  'Habiganj', 'Jamalpur', 'Jashore', 'Jhalokati', 'Jhenaidah', 'Joypurhat',
+  'Khagrachhari', 'Khulna', 'Kishoreganj', 'Kurigram', 'Kushtia', 'Lakshmipur',
+  'Lalmonirhat', 'Madaripur', 'Magura', 'Manikganj', 'Meherpur', 'Moulvibazar',
+  'Munshiganj', 'Mymensingh', 'Naogaon', 'Narail', 'Narayanganj', 'Narsingdi',
+  'Natore', 'Netrokona', 'Nilphamari', 'Noakhali', 'Pabna', 'Panchagarh',
+  'Patuakhali', 'Pirojpur', 'Rajbari', 'Rajshahi', 'Rangamati', 'Rangpur',
+  'Satkhira', 'Shariatpur', 'Sherpur', 'Sirajganj', 'Sunamganj', 'Sylhet',
+  'Tangail', 'Thakurgaon',
+];
+
 export default function CheckoutPage() {
   const router = useRouter();
   const { lines, subtotal, clear } = useCart();
@@ -149,8 +164,11 @@ export default function CheckoutPage() {
               </div>
               <div>
                 <label className="label">City / District *</label>
-                <input className="input" value={form.city} onChange={(e) => set('city', e.target.value)} placeholder="e.g. Dhaka" />
-                <p className="mt-1 text-xs text-slate-400">Type &quot;Dhaka&quot; for inside-Dhaka delivery rate.</p>
+                <select className="input" value={form.city} onChange={(e) => set('city', e.target.value)}>
+                  <option value="">Select district</option>
+                  {DISTRICTS.map((d) => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <p className="mt-1 text-xs text-slate-400">Dhaka district gets the inside-Dhaka delivery rate.</p>
               </div>
               <div>
                 <label className="label">Postcode</label>

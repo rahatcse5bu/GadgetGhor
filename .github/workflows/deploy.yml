@@ -1,0 +1,84 @@
+name: Deploy to cPanel (FTP)
+
+# Builds backend + frontend on GitHub, then uploads the built output to cPanel
+# over FTP. node_modules is NOT uploaded (installed once on the server) — only
+# changed build files transfer, so deploys stay fast.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {} # lets you trigger a deploy manually from the Actions tab
+
+jobs:
+  # ───────────────────────── BACKEND (NestJS) ─────────────────────────
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & build
+        working-directory: backend
+        run: |
+          npm ci
+          npm run build
+          mkdir -p tmp && date > tmp/restart.txt   # touch → Passenger restarts the app
+
+      - name: Deploy backend via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Path is relative to the FTP account's home dir. Adjust if your FTP
+          # user's home is not /home/tasinaca.
+          server-dir: gadgetghor.org/backend/
+          local-dir: ./backend/
+          exclude: |
+            **/node_modules/**
+            **/src/**
+            **/.git*
+            **/.git*/**
+            **/.env
+            **/*.md
+
+  # ───────────────────────── FRONTEND (Next.js) ─────────────────────────
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & build
+        working-directory: frontend
+        env:
+          # Baked into the build — must point at your live API.
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://api.gadgetghor.org/api' }}
+          NEXT_PUBLIC_SITE_NAME: GadgetGhor
+        run: |
+          npm ci
+          npm run build
+          mkdir -p tmp && date > tmp/restart.txt
+
+      - name: Deploy frontend via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: gadgetghor.org/frontend/
+          local-dir: ./frontend/
+          exclude: |
+            **/node_modules/**
+            **/.next/cache/**
+            **/src/**
+            **/.git*
+            **/.git*/**
+            **/.env*
+            **/*.md

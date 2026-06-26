@@ -33,9 +33,9 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          # Path is relative to the FTP account's home dir. Adjust if your FTP
-          # user's home is not /home/tasinaca.
-          server-dir: gadgetghor.org/backend/
+          # Path is relative to the FTP account's home dir. The backend lives in
+          # the api.gadgetghor.org subdomain's document root.
+          server-dir: api.gadgetghor.org/
           local-dir: ./backend/
           exclude: |
             **/node_modules/**
